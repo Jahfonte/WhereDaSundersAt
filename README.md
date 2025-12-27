@@ -1,7 +1,5 @@
 ![Where Da Sunders At?](wtsa2.png)
 
-![Config Menu](wdsamenu.png)
-
 # Where Da Sunders At? (WDSA)
 
 Sunder Armor stack tracker for Turtle WoW
@@ -17,6 +15,8 @@ Sunder Armor stack tracker for Turtle WoW
 - Minimap button (draggable)
   - Left-click: Open config panel
   - Right-click: Toggle on/off
+
+![Config Menu](wdsamenu.png)
 
 ## Commands
 
