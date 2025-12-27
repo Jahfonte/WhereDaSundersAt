@@ -72,7 +72,7 @@ local function InitSounds()
     soundFiles = {}
     numSoundFiles = 0
     for i = 1, 10 do
-        local path = "Interface\\AddOns\\WhereDaSundersAt\\sounds\\" .. tostring(i) .. ".mp3"
+        local path = "Interface\\AddOns\\WhereDaSundersAt\\sounds\\sunders" .. tostring(i) .. ".mp3"
         table.insert(soundFiles, path)
         numSoundFiles = numSoundFiles + 1
     end
@@ -84,8 +84,10 @@ local function PlayRandomSound()
     local cd = WDSA_DB.soundCooldown or soundCooldown
     if (now - lastSoundTime) < cd then return end
     if numSoundFiles > 0 then
+        math.randomseed(GetTime() * 1000)
         local randomIndex = math.random(1, numSoundFiles)
         local soundPath = soundFiles[randomIndex]
+        DEFAULT_CHAT_FRAME:AddMessage("|cffC79C6EWDSA|r: Playing #" .. tostring(randomIndex))
         PlaySoundFile(soundPath)
         lastSoundTime = now
     end
