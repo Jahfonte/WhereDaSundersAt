@@ -1,0 +1,8 @@
+## Interface: 11200
+## Title: |cffC79C6EWhere Da Sunders At?|r
+## Author: Totemfoo
+## Version: 1.0.0
+## Notes: Sunder Armor stack tracker with sound alerts
+## SavedVariablesPerCharacter: WDSA_DB
+
+WhereDaSundersAt.lua
