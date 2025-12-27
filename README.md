@@ -1,5 +1,7 @@
 ![Where Da Sunders At?](wtsa2.png)
 
+![Config Menu](wdsamenu.png)
+
 # Where Da Sunders At? (WDSA)
 
 Sunder Armor stack tracker for Turtle WoW
@@ -38,7 +40,7 @@ Sunder Armor stack tracker for Turtle WoW
 
 Two sound types:
 - `no-sunders.mp3` - Plays when targeting a boss (level 63) with 0 stacks
-- `1.mp3`, `2.mp3`, etc - Random sound when sunder is applied
+- `sunders1.mp3`, `sunders2.mp3`, etc - Random sound when sunder is applied
 
 Use `/wdsa level` to include level 62 elites.
 
