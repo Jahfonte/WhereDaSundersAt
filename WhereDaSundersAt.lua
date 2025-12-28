@@ -35,6 +35,11 @@ local numSoundFiles = 0
 local sessionTotalSunders = 0
 local sundersByPlayer = {}
 local lastSunderTime = 0
+local lastKnownStacks = 0
+local pendingSunderer = nil
+local pendingSunderTime = 0
+local PENDING_TIMEOUT = 2.0
+local lastTargetName = nil
 
 local mainFrame
 local counterText
@@ -183,6 +188,29 @@ local function ParseCombatMessage(msg)
         end
     end
     return playerName
+end
+
+local function SetPendingSunderer(playerName)
+    if playerName and playerName ~= "" then
+        pendingSunderer = playerName
+        pendingSunderTime = GetTime()
+    end
+end
+
+local function GetPendingSunderer()
+    if not pendingSunderer then return nil end
+    local now = GetTime()
+    if (now - pendingSunderTime) > PENDING_TIMEOUT then
+        pendingSunderer = nil
+        pendingSunderTime = 0
+        return nil
+    end
+    return pendingSunderer
+end
+
+local function ClearPendingSunderer()
+    pendingSunderer = nil
+    pendingSunderTime = 0
 end
 
 local function GetSunderStacks(unit)
@@ -384,12 +412,27 @@ local function OnEvent()
 
     elseif event == "PLAYER_TARGET_CHANGED" then
         lastStacks = 0
+        lastKnownStacks = GetSunderStacks("target")
+        lastTargetName = UnitName("target")
+        ClearPendingSunderer()
         UpdateDisplay()
         CheckTargetForNoSunders()
 
     elseif event == "UNIT_AURA" then
-        if arg1 == "target" then
+        if arg1 == "target" and UnitExists("target") then
             local newStacks = GetSunderStacks("target")
+            local currentTargetName = UnitName("target")
+            if currentTargetName and newStacks > lastKnownStacks and currentTargetName == lastTargetName then
+                local sunderer = GetPendingSunderer()
+                if sunderer then
+                    RecordSunder(sunderer)
+                    ClearPendingSunderer()
+                else
+                    RecordSunder("Unknown")
+                end
+            end
+            lastKnownStacks = newStacks
+            lastTargetName = currentTargetName
             UpdateDisplay()
         end
 
@@ -399,49 +442,48 @@ local function OnEvent()
     elseif event == "CHAT_MSG_SPELL_SELF_DAMAGE" then
         local playerName = ParseCombatMessage(arg1)
         if playerName then
-            RecordSunder(playerName)
-            UpdateDisplay()
+            SetPendingSunderer(playerName)
         end
 
     elseif event == "CHAT_MSG_SPELL_PARTY_DAMAGE" then
         local playerName = ParseCombatMessage(arg1)
         if playerName then
-            RecordSunder(playerName)
-            UpdateDisplay()
+            SetPendingSunderer(playerName)
         end
 
     elseif event == "CHAT_MSG_SPELL_FRIENDLYPLAYER_DAMAGE" then
         local playerName = ParseCombatMessage(arg1)
         if playerName then
-            RecordSunder(playerName)
-            UpdateDisplay()
+            SetPendingSunderer(playerName)
+        end
+
+    elseif event == "CHAT_MSG_SPELL_HOSTILEPLAYER_DAMAGE" then
+        local playerName = ParseCombatMessage(arg1)
+        if playerName then
+            SetPendingSunderer(playerName)
         end
 
     elseif event == "CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE" then
         local playerName = ParseCombatMessage(arg1)
         if playerName then
-            RecordSunder(playerName)
-            UpdateDisplay()
+            SetPendingSunderer(playerName)
         end
 
     elseif event == "CHAT_MSG_COMBAT_SELF_HITS" then
         if arg1 and S_FIND(S_LOWER(arg1), "sunder") then
-            RecordSunder(UnitName("player"))
-            UpdateDisplay()
+            SetPendingSunderer(UnitName("player"))
         end
 
     elseif event == "CHAT_MSG_COMBAT_PARTY_HITS" then
         local playerName = ParseCombatMessage(arg1)
         if playerName then
-            RecordSunder(playerName)
-            UpdateDisplay()
+            SetPendingSunderer(playerName)
         end
 
     elseif event == "CHAT_MSG_COMBAT_FRIENDLYPLAYER_HITS" then
         local playerName = ParseCombatMessage(arg1)
         if playerName then
-            RecordSunder(playerName)
-            UpdateDisplay()
+            SetPendingSunderer(playerName)
         end
     end
 end
@@ -454,6 +496,7 @@ eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("CHAT_MSG_SPELL_SELF_DAMAGE")
 eventFrame:RegisterEvent("CHAT_MSG_SPELL_PARTY_DAMAGE")
 eventFrame:RegisterEvent("CHAT_MSG_SPELL_FRIENDLYPLAYER_DAMAGE")
+eventFrame:RegisterEvent("CHAT_MSG_SPELL_HOSTILEPLAYER_DAMAGE")
 eventFrame:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE")
 eventFrame:RegisterEvent("CHAT_MSG_COMBAT_SELF_HITS")
 eventFrame:RegisterEvent("CHAT_MSG_COMBAT_PARTY_HITS")
