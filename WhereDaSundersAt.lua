@@ -185,6 +185,7 @@ local function CheckTargetForNoSunders()
     if not WDSA_DB.soundEnabled then return end
     if not UnitExists("target") then return end
     if UnitIsFriend("player", "target") then return end
+    if UnitIsDead("target") then return end
     local level = UnitLevel("target")
     if level == -1 then level = 63 end
     local minLevel = WDSA_DB.bossLevel or 63
