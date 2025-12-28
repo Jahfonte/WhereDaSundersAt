@@ -46,6 +46,20 @@ Use `/wdsa level` to include level 62 elites.
 
 Place files in the `sounds/` folder.
 
+## Announce Output
+
+Configurable chat output when sunders are applied:
+
+| Channel | Behavior |
+|---------|----------|
+| None | No announcements (default) |
+| Debug | Print to your chat frame only |
+| Say | /say in local chat |
+| Yell | /yell in zone |
+| Raid/Party | /raid or /party depending on group |
+
+Format: `Player sundered Target 3/5`
+
 ## Display Colors
 
 | Color | Meaning |
