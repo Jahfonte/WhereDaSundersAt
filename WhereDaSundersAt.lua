@@ -17,14 +17,18 @@ local MAX_SUNDER_STACKS = 5
 local SUNDER_PATTERNS = {
     "Sunder Armor",
     "sunder armor",
+    "Sunder",
+    "sunder",
 }
 
 local currentStacks = 0
 local lastStacks = 0
 local lastSoundTime = 0
 local lastNoSunderSoundTime = 0
-local soundCooldown = 3.0
+local soundCooldown = 0.5
 local noSunderCooldown = 5.0
+local lastAnnounceTime = 0
+local announceCooldown = 2.0
 local soundFiles = {}
 local numSoundFiles = 0
 
@@ -48,12 +52,39 @@ local defaults = {
     posY = 100,
     scale = 1.0,
     soundEnabled = true,
-    soundCooldown = 3.0,
+    soundCooldown = 0.5,
     bossLevel = 63,
+    outputChannel = "none",
 }
 
 local function Print(msg)
     DEFAULT_CHAT_FRAME:AddMessage(ADDON_PREFIX .. tostring(msg))
+end
+
+local function AnnounceSunder(playerName, stacks)
+    if not WDSA_DB or not WDSA_DB.outputChannel then return end
+    local channel = WDSA_DB.outputChannel
+    if channel == "none" then return end
+    local now = GetTime()
+    if (now - lastAnnounceTime) < announceCooldown then return end
+    lastAnnounceTime = now
+    local targetName = UnitName("target") or "target"
+    local msg = tostring(playerName) .. " sundered " .. tostring(targetName) .. " " .. tostring(stacks) .. "/5"
+    if channel == "debug" then
+        DEFAULT_CHAT_FRAME:AddMessage("|cffC79C6E[WDSA]|r " .. msg)
+    elseif channel == "say" then
+        SendChatMessage(msg, "SAY")
+    elseif channel == "yell" then
+        SendChatMessage(msg, "YELL")
+    elseif channel == "raid" then
+        if GetNumRaidMembers() > 0 then
+            SendChatMessage(msg, "RAID")
+        elseif GetNumPartyMembers() > 0 then
+            SendChatMessage(msg, "PARTY")
+        else
+            DEFAULT_CHAT_FRAME:AddMessage("|cffC79C6E[WDSA]|r " .. msg)
+        end
+    end
 end
 
 local function round(num)
@@ -112,6 +143,8 @@ local function RecordSunder(playerName)
     sundersByPlayer[playerName] = sundersByPlayer[playerName] + 1
     lastSunderTime = GetTime()
     PlayRandomSound()
+    local stacks = GetSunderStacks("target")
+    AnnounceSunder(playerName, stacks)
 end
 
 local function GetWhoSunderedText()
@@ -133,24 +166,18 @@ end
 
 local function ParseCombatMessage(msg)
     if not msg then return nil end
-    local hasSunder = false
-    for _, pattern in ipairs(SUNDER_PATTERNS) do
-        if S_FIND(msg, pattern) then
-            hasSunder = true
-            break
-        end
-    end
-    if not hasSunder then return nil end
+    local lowerMsg = S_LOWER(msg)
+    if not S_FIND(lowerMsg, "sunder") then return nil end
     local playerName = nil
     if S_FIND(msg, "^Your ") or S_FIND(msg, "^your ") then
         playerName = UnitName("player")
     else
-        local _, _, name = S_FIND(msg, "^([%w]+)'s Sunder")
+        local _, _, name = S_FIND(msg, "^([%w]+)'s ")
         if name then
             playerName = name
         else
-            local _, _, name2 = S_FIND(msg, "^([%w]+) casts Sunder")
-            if name2 then
+            local _, _, name2 = S_FIND(msg, "^([%w]+) ")
+            if name2 and name2 ~= "Your" and name2 ~= "your" then
                 playerName = name2
             end
         end
@@ -343,6 +370,9 @@ local function OnEvent()
         end
         if WDSA_DB.bossLevel == nil then
             WDSA_DB.bossLevel = defaults.bossLevel
+        end
+        if WDSA_DB.outputChannel == nil then
+            WDSA_DB.outputChannel = defaults.outputChannel
         end
         CreateScanTooltip()
         CreateUI()
@@ -680,7 +710,7 @@ end)
 
 local configFrame = CreateFrame("Frame", "WDSAConfigFrame", UIParent)
 configFrame:SetWidth(280)
-configFrame:SetHeight(320)
+configFrame:SetHeight(420)
 configFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 configFrame:SetFrameStrata("DIALOG")
 configFrame:EnableMouse(true)
@@ -831,6 +861,99 @@ rb62:SetScript("OnClick", function()
     WDSA_DB.bossLevel = 62
 end)
 
+local outHeader = configFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+outHeader:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 20, -270)
+outHeader:SetText("Announce Output:")
+outHeader:SetTextColor(1, 0.82, 0)
+
+local rbNone = CreateFrame("CheckButton", "WDSA_RB_None", configFrame, "UIRadioButtonTemplate")
+rbNone:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 30, -290)
+rbNone:SetWidth(20)
+rbNone:SetHeight(20)
+local rbNoneText = getglobal("WDSA_RB_NoneText")
+if rbNoneText then
+    rbNoneText:SetText("None")
+    rbNoneText:SetFontObject(GameFontHighlight)
+end
+
+local rbDebug = CreateFrame("CheckButton", "WDSA_RB_Debug", configFrame, "UIRadioButtonTemplate")
+rbDebug:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 100, -290)
+rbDebug:SetWidth(20)
+rbDebug:SetHeight(20)
+local rbDebugText = getglobal("WDSA_RB_DebugText")
+if rbDebugText then
+    rbDebugText:SetText("Debug")
+    rbDebugText:SetFontObject(GameFontHighlight)
+end
+
+local rbSay = CreateFrame("CheckButton", "WDSA_RB_Say", configFrame, "UIRadioButtonTemplate")
+rbSay:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 30, -310)
+rbSay:SetWidth(20)
+rbSay:SetHeight(20)
+local rbSayText = getglobal("WDSA_RB_SayText")
+if rbSayText then
+    rbSayText:SetText("Say")
+    rbSayText:SetFontObject(GameFontHighlight)
+end
+
+local rbYell = CreateFrame("CheckButton", "WDSA_RB_Yell", configFrame, "UIRadioButtonTemplate")
+rbYell:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 100, -310)
+rbYell:SetWidth(20)
+rbYell:SetHeight(20)
+local rbYellText = getglobal("WDSA_RB_YellText")
+if rbYellText then
+    rbYellText:SetText("Yell")
+    rbYellText:SetFontObject(GameFontHighlight)
+end
+
+local rbRaid = CreateFrame("CheckButton", "WDSA_RB_Raid", configFrame, "UIRadioButtonTemplate")
+rbRaid:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 170, -310)
+rbRaid:SetWidth(20)
+rbRaid:SetHeight(20)
+local rbRaidText = getglobal("WDSA_RB_RaidText")
+if rbRaidText then
+    rbRaidText:SetText("Raid/Party")
+    rbRaidText:SetFontObject(GameFontHighlight)
+end
+
+local function ClearOutputRadios()
+    rbNone:SetChecked(false)
+    rbDebug:SetChecked(false)
+    rbSay:SetChecked(false)
+    rbYell:SetChecked(false)
+    rbRaid:SetChecked(false)
+end
+
+rbNone:SetScript("OnClick", function()
+    ClearOutputRadios()
+    rbNone:SetChecked(true)
+    WDSA_DB.outputChannel = "none"
+end)
+
+rbDebug:SetScript("OnClick", function()
+    ClearOutputRadios()
+    rbDebug:SetChecked(true)
+    WDSA_DB.outputChannel = "debug"
+end)
+
+rbSay:SetScript("OnClick", function()
+    ClearOutputRadios()
+    rbSay:SetChecked(true)
+    WDSA_DB.outputChannel = "say"
+end)
+
+rbYell:SetScript("OnClick", function()
+    ClearOutputRadios()
+    rbYell:SetChecked(true)
+    WDSA_DB.outputChannel = "yell"
+end)
+
+rbRaid:SetScript("OnClick", function()
+    ClearOutputRadios()
+    rbRaid:SetChecked(true)
+    WDSA_DB.outputChannel = "raid"
+end)
+
 local resetBtn = CreateFrame("Button", "WDSA_ResetBtn", configFrame, "UIPanelButtonTemplate")
 resetBtn:SetWidth(120)
 resetBtn:SetHeight(24)
@@ -866,6 +989,19 @@ local function LoadConfigUI()
     else
         rb63:SetChecked(true)
         rb62:SetChecked(false)
+    end
+    ClearOutputRadios()
+    local channel = WDSA_DB.outputChannel or "none"
+    if channel == "debug" then
+        rbDebug:SetChecked(true)
+    elseif channel == "say" then
+        rbSay:SetChecked(true)
+    elseif channel == "yell" then
+        rbYell:SetChecked(true)
+    elseif channel == "raid" then
+        rbRaid:SetChecked(true)
+    else
+        rbNone:SetChecked(true)
     end
 end
 
