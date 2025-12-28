@@ -181,6 +181,7 @@ local function GetSunderStacks(unit)
 end
 
 local function CheckTargetForNoSunders()
+    if not WDSA_DB.enabled then return end
     if not WDSA_DB.soundEnabled then return end
     if not UnitExists("target") then return end
     if UnitIsFriend("player", "target") then return end
