@@ -79,7 +79,7 @@ local function InitSounds()
 end
 
 local function PlayRandomSound()
-    if not WDSA_DB.soundEnabled then return end
+    if not WDSA_DB or not WDSA_DB.soundEnabled then return end
     local now = GetTime()
     local cd = WDSA_DB.soundCooldown or soundCooldown
     if (now - lastSoundTime) < cd then return end
@@ -87,14 +87,13 @@ local function PlayRandomSound()
         math.randomseed(GetTime() * 1000)
         local randomIndex = math.random(1, numSoundFiles)
         local soundPath = soundFiles[randomIndex]
-        DEFAULT_CHAT_FRAME:AddMessage("|cffC79C6EWDSA|r: Playing #" .. tostring(randomIndex))
         PlaySoundFile(soundPath)
         lastSoundTime = now
     end
 end
 
 local function PlayNoSunderSound()
-    if not WDSA_DB.soundEnabled then return end
+    if not WDSA_DB or not WDSA_DB.soundEnabled then return end
     local now = GetTime()
     if (now - lastNoSunderSoundTime) < noSunderCooldown then return end
     local soundPath = "Interface\\AddOns\\WhereDaSundersAt\\sounds\\no-sunders.mp3"
@@ -181,6 +180,7 @@ local function GetSunderStacks(unit)
 end
 
 local function CheckTargetForNoSunders()
+    if not WDSA_DB then return end
     if not WDSA_DB.enabled then return end
     if not WDSA_DB.soundEnabled then return end
     if not UnitExists("target") then return end
@@ -188,7 +188,8 @@ local function CheckTargetForNoSunders()
     if UnitIsDead("target") then return end
     local level = UnitLevel("target")
     if level == -1 then level = 63 end
-    local minLevel = WDSA_DB.bossLevel or 63
+    local minLevel = WDSA_DB.bossLevel
+    if not minLevel or minLevel < 1 then minLevel = 63 end
     if level < minLevel then return end
     local stacks = GetSunderStacks("target")
     if stacks == 0 then
@@ -274,12 +275,13 @@ local function IsValidSunderTarget(unit)
     if UnitIsDead(unit) then return false end
     local level = UnitLevel(unit)
     if level == -1 then level = 63 end
-    local minLevel = WDSA_DB.bossLevel or 63
+    local minLevel = WDSA_DB and WDSA_DB.bossLevel
+    if not minLevel or minLevel < 1 then minLevel = 63 end
     return level >= minLevel
 end
 
 local function UpdateDisplay()
-    if not WDSA_DB.enabled or not mainFrame then
+    if not WDSA_DB or not WDSA_DB.enabled or not mainFrame then
         if mainFrame then mainFrame:Hide() end
         return
     end
@@ -330,6 +332,7 @@ local function OnEvent()
                 scale = defaults.scale,
                 soundEnabled = defaults.soundEnabled,
                 soundCooldown = defaults.soundCooldown,
+                bossLevel = defaults.bossLevel,
             }
         end
         if WDSA_DB.showWho == nil then
