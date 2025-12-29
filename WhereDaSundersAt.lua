@@ -137,6 +137,27 @@ local function PlayNoSunderSound()
     lastNoSunderSoundTime = now
 end
 
+local function GetSunderStacks(unit)
+    if not unit or not UnitExists(unit) then
+        return 0
+    end
+    for i = 1, 40 do
+        local texture, count = UnitDebuff(unit, i)
+        if not texture then break end
+        WDSATooltip:SetOwner(UIParent, "ANCHOR_NONE")
+        WDSATooltip:ClearLines()
+        WDSATooltip:SetUnitDebuff(unit, i)
+        local debuffName = WDSATooltipTextLeft1:GetText()
+        if debuffName then
+            local lowerName = S_LOWER(debuffName)
+            if S_FIND(lowerName, "sunder") then
+                return count or 1
+            end
+        end
+    end
+    return 0
+end
+
 local function RecordSunder(playerName)
     if not playerName or playerName == "" then
         playerName = "Unknown"
@@ -211,27 +232,6 @@ end
 local function ClearPendingSunderer()
     pendingSunderer = nil
     pendingSunderTime = 0
-end
-
-local function GetSunderStacks(unit)
-    if not unit or not UnitExists(unit) then
-        return 0
-    end
-    for i = 1, 40 do
-        local texture, count = UnitDebuff(unit, i)
-        if not texture then break end
-        WDSATooltip:SetOwner(UIParent, "ANCHOR_NONE")
-        WDSATooltip:ClearLines()
-        WDSATooltip:SetUnitDebuff(unit, i)
-        local debuffName = WDSATooltipTextLeft1:GetText()
-        if debuffName then
-            local lowerName = S_LOWER(debuffName)
-            if S_FIND(lowerName, "sunder") then
-                return count or 1
-            end
-        end
-    end
-    return 0
 end
 
 local function CheckTargetForNoSunders()
